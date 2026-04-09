@@ -74,7 +74,7 @@ const runApp = async (): Promise<void> => {
       "This app searches jobs using JobTech API from Arbetsförmedlingen\n",
     );
 
-    await searchJobs("Software Developer", "Malmö");
+    await searchJobs("Software Developer       ", "Malmö         ");
   } catch (error) {
     console.error("App failed to start");
     console.dir(error);
