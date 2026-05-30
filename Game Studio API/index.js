@@ -1,6 +1,7 @@
 import express from "express";
 import pg from "pg";
 import dotenv from "dotenv";
+import { z } from "zod";
 const PORT = 3000;
 
 dotenv.config();
@@ -11,10 +12,44 @@ const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
   database: process.env.DB_DATABASE,
-  password: process.env.DB_PASSWORD,
+  password: process.env.DB_PASSWORD
 });
 
 app.use(express.json());
+
+// Zod Schemas for validation
+const PlayerScoreSchema = z.object({
+  player: z.string(),
+  game: z.string(),
+  score: z.coerce.number()
+});
+
+const TopPlayerSchema = z.object({
+  name: z.string(),
+  total_score: z.coerce.number()
+});
+
+const PlayerInfoSchema = z.object({
+  id: z.coerce.number(),
+  name: z.string(),
+  join_date: z.coerce.string().optional()
+});
+
+const GenreSchema = z.object({
+  genre: z.string(),
+  times_played: z.coerce.number()
+});
+
+const FavoriteGameSchema = z.object({
+  name: z.string(),
+  title: z.string(),
+  times_played: z.coerce.number()
+});
+
+// Validation middleware
+const validateResponse = (schema) => (data) => {
+  return z.array(schema).parse(data);
+};
 
 // Task 1: List All Players and Their Scores
 app.get("/players-scores", async (req, res) => {
@@ -26,7 +61,8 @@ app.get("/players-scores", async (req, res) => {
        JOIN games g ON g.id = s.game_id
        ORDER BY p.name, s.score DESC`
     );
-    res.status(200).json(result.rows);
+    const validatedData = validateResponse(PlayerScoreSchema)(result.rows);
+    res.status(200).json(validatedData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -43,7 +79,8 @@ app.get("/top-players", async (req, res) => {
        ORDER BY total_score DESC
        LIMIT 3`
     );
-    res.status(200).json(result.rows);
+    const validatedData = validateResponse(TopPlayerSchema)(result.rows);
+    res.status(200).json(validatedData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -58,7 +95,8 @@ app.get("/inactive-players", async (req, res) => {
        LEFT JOIN scores s ON p.id = s.player_id
        WHERE s.id IS NULL`
     );
-    res.status(200).json(result.rows);
+    const validatedData = validateResponse(PlayerInfoSchema)(result.rows);
+    res.status(200).json(validatedData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -74,7 +112,8 @@ app.get("/popular-genres", async (req, res) => {
        GROUP BY g.genre
        ORDER BY times_played DESC`
     );
-    res.status(200).json(result.rows);
+    const validatedData = validateResponse(GenreSchema)(result.rows);
+    res.status(200).json(validatedData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -89,7 +128,8 @@ app.get("/recent-players", async (req, res) => {
        WHERE p.join_date >= CURRENT_DATE - INTERVAL '30 days'
        ORDER BY p.join_date DESC`
     );
-    res.status(200).json(result.rows);
+    const validatedData = validateResponse(PlayerInfoSchema)(result.rows);
+    res.status(200).json(validatedData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -106,7 +146,8 @@ app.get("/favorite-games", async (req, res) => {
        GROUP BY p.name, g.title
        ORDER BY p.name, times_played DESC`
     );
-    res.status(200).json(result.rows);
+    const validatedData = validateResponse(FavoriteGameSchema)(result.rows);
+    res.status(200).json(validatedData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
